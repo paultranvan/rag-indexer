@@ -115,8 +115,7 @@ async def main():
                     except Exception:
                         pass
 
-        def on_message(message: aio_pika.IncomingMessage) -> None:
-            """Sync callback -- creates tracked async task for each message."""
+        async def on_message(message: aio_pika.IncomingMessage) -> None:
             task = asyncio.create_task(handle_message(message))
             in_flight.add(task)
             task.add_done_callback(in_flight.discard)
