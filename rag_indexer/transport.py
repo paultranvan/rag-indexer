@@ -44,6 +44,19 @@ async def start_health_server(connection, host="0.0.0.0", port=8080):
 
 
 # ---------- Retry / DLQ publishing ----------
+def _file_metadata(metadata: dict) -> dict:
+    """File metadata echoed to the cozy callback, mirroring rag_client.build_metadata."""
+    result = {
+        "version": metadata.get("version") or metadata.get("md5sum") or "",
+        "datetime": metadata.get("datetime") or "",
+        "doctype": metadata.get("doctype") or "",
+    }
+    app_metadata = metadata.get("app_metadata")
+    if isinstance(app_metadata, dict):
+        result |= app_metadata
+    return result
+
+
 async def publish_to_retry(
     channel: aio_pika.Channel,
     original_msg: aio_pika.IncomingMessage,

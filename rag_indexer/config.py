@@ -36,8 +36,14 @@ def build_retry_queues(intervals: list[int]) -> list[tuple[str, int]]:
     - 3600000+ and divisible by 3600000 -> "Xh"
     - 60000+ and divisible by 60000 -> "Xm"
     - Otherwise -> "Xs" using ttl_ms // 1000
+
+    Names must stay unique: retry counting reads distinct x-death entries
+    keyed by queue name, so two intervals collapsing to the same label
+    (e.g. 30000 and 30500 both -> "30s") would break it. Only colliding
+    names get a numeric suffix; non-colliding names are unchanged.
     """
     queues = []
+    seen = set()
     for ttl_ms in intervals:
         if ttl_ms >= 3_600_000 and ttl_ms % 3_600_000 == 0:
             label = f"{ttl_ms // 3_600_000}h"
@@ -45,7 +51,13 @@ def build_retry_queues(intervals: list[int]) -> list[tuple[str, int]]:
             label = f"{ttl_ms // 60_000}m"
         else:
             label = f"{ttl_ms // 1000}s"
-        queues.append((f"rag.index.retry.{label}.q", ttl_ms))
+        name = f"rag.index.retry.{label}.q"
+        i = 2
+        while name in seen:
+            name = f"rag.index.retry.{label}-{i}.q"
+            i += 1
+        seen.add(name)
+        queues.append((name, ttl_ms))
     return queues
 
 
